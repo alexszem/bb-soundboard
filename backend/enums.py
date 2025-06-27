@@ -1,0 +1,31 @@
+import enum
+from sqlalchemy import Enum as PgEnum
+
+class UsageNameEnum(str, enum.Enum):
+    UNKNOWN = "UNKNOWN"
+    BREAK = "BREAK"
+    FOULBALL = "FOULBALL"
+    WALK = "WALK"
+    STRIKEOUT = "STRIKEOUT"
+    STRIKEOUTLOOKING = "STRIKEOUTLOOKING"
+    HOMERUN = "HOMERUN"
+    GRANDSLAM = "GRANDSLAM"
+    HITBYPITCH = "HITBYPITCH"
+    BASEHIT = "BASEHIT"
+    DOUBLE = "DOUBLE"
+    TRIPLE = "TRIPLE"
+    SACFLY = "SACFLY"
+    BUNT = "BUNT"
+    DIVINGCATCH = "DIVINGCATCH"
+    DOUBLEPLAY = "DOUBLEPLAY"
+    STEAL = "STEAL"
+    PICKOFF = "PICKOFF"
+    MOUNDVISIT = "MOUNDVISIT"
+    PITCHCHANGE = "PITCHCHANGE"
+    CROWD_CHEER = "CROWD_CHEER"
+    CROWD_BOO = "CROWD_BOO"
+    ORGAN_RIFF = "ORGAN_RIFF"
+    ERROR = "ERROR"
+    WALKOFF = "WALKOFF"
+
+UsageNamePgEnum = PgEnum(UsageNameEnum, name="usage_name_enum", create_type=False)
