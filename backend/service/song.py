@@ -1,7 +1,8 @@
 import os
 from werkzeug.utils import secure_filename
 from backend.crud.song import add_song, get_song as get_song_crud, get_all_songs as get_all_songs_crud, delete_song as delete_song_crud
-from mutagen import File as MutagenFile  # for audio length extraction
+from mutagen import File as MutagenFile
+from backend.utils import get_songs_dir  # for audio length extraction
 
 # Song service layer
 def is_valid_audio_file(file):
@@ -19,14 +20,16 @@ def add_new_song(file, name: str, artist: str):
     if not is_valid:
         raise ValueError("Invalid audio file format.")
 
-    temp_path = os.path.join("../songs", "temp_upload." + file_ending)
+    songs_dir = get_songs_dir()
+
+    temp_path = os.path.join(songs_dir, f"temp_upload.{file_ending}")
     file.save(temp_path)
 
     length = get_audio_length(temp_path)
 
     song_id = add_song(name=name, artist=artist, file_ending=file_ending, length=length)
 
-    final_path = os.path.join("../songs", f"{song_id}.{file_ending}")
+    final_path = os.path.join(songs_dir, f"{song_id}.{file_ending}")
     os.rename(temp_path, final_path)
 
     return song_id
@@ -34,7 +37,9 @@ def add_new_song(file, name: str, artist: str):
 def delete_song(song_id: int):
     song = get_song_crud(song_id)
     if song:
-        file_path = os.path.join("../songs", f"{song['id']}.{song['file_ending']}")
+        songs_dir = get_songs_dir()
+
+        file_path = os.path.join(songs_dir, f"{song['id']}.{song['file_ending']}")
         if os.path.exists(file_path):
             os.remove(file_path)
         delete_song_crud(song_id)
