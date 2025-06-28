@@ -1,0 +1,11 @@
+- creating a song component, which displays:
+  - name, artist and length
+  - has a collapsable which will then show all the snippets of that song and have a button that starts the process of creating a new snippet (maybe a quick modal)
+- creating the snippet component that is used in the song component
+  - has the start and stop time
+  - on click a modal opens showing all the usages it is used for in bubbles like in gitlab tags for example. you can click on the ones you want to add or delete and save to save the changes
+- creating a usage components that shows all usages and all their snippets, from there snippets can be removed from a usage
+- creating a component which takes a usage name and an icon name, in that component when it is clicked it will call the api to play that usage
+- creating the index page with a caancel FAB
+
+- implementing all the api endpoint integrations
