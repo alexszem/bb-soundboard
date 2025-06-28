@@ -11,11 +11,6 @@ def add_usage_route(snippet_id: int, usage_name: str):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.put("/{usage_id}")
-def edit_usage_route(usage_id: int, usage_name: str):
-    edit_existing_usage(usage_id, usage_name)
-    return {"message": "Usage updated successfully"}
-
 @router.delete("/{usage_id}")
 def delete_usage_route(usage_id: int):
     delete_existing_usage(usage_id)

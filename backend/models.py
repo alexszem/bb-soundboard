@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 from .enums import UsageNamePgEnum
@@ -30,7 +30,9 @@ class Usage(Base):
     snippet_id = Column(Integer, ForeignKey("snippets.id"))
     usage_name = Column(UsageNamePgEnum, default="UNKNOWN")
 
-    snippet = relationship("Snippet", back_populates="usages")
+    __table_args__ = (
+        UniqueConstraint('snippet_id', 'usage_name', name='unique_snippet_usage'),
+    )
 
 class Player(Base):
     __tablename__ = "players"

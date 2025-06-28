@@ -16,6 +16,15 @@ def get_snippet(session, snippet_id: int):
     return None
 
 @with_session
+def get_snippets_by_song(session, song_id: int):
+    snippets = session.query(Snippet).filter(Snippet.song_id == song_id).all()
+    return [{
+        "id": snippet.id,
+        "start": snippet.start,
+        "stop": snippet.stop
+    } for snippet in snippets]
+
+@with_session
 def get_all_snippets(session):
     snippets = session.query(Snippet).all()
     result = []
