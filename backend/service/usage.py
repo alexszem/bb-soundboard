@@ -1,31 +1,69 @@
-from backend.crud.usage import get_usage as get_usage_crud, get_usages_by_name as get_usages_by_name_crud, add_usage as add_usage_crud, edit_usage as edit_usage_crud, delete_usage as delete_usage_crud, get_all_usages as get_all_usages_crud
-from backend.crud.snippet import get_snippet
-from .snippet import play_snippet
-import random
+from __future__ import annotations
 
-# Usage service layer
-def add_new_usage(snippet_id: int, usage_name: str):
-    # Validate snippet exists before adding usage
-    snippet = get_snippet(snippet_id)
-    if not snippet:
-        raise ValueError("Snippet does not exist.")
-    return add_usage_crud(snippet_id, usage_name)
+from typing import Optional
 
-def edit_existing_usage(usage_id: int, usage_name: str):
-    edit_usage_crud(usage_id, usage_name)
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-def delete_existing_usage(usage_id: int):
-    delete_usage_crud(usage_id)
+from backend.audio import PlaybackController, play_snippet
+from backend.db import (
+    SnippetModel,
+    UsageModel,
+    UsageTypeModel,
+)
+from backend.service import Page, _paginate
 
-def play_random_snippet_by_usage(usage_name: str):
-    usages = get_usages_by_name_crud(usage_name)
-    if not usages:
-        raise ValueError("No snippets found for this usage.")
-    random_usage = random.choice(usages)
-    play_snippet(random_usage['snippet_id'])
+def get_usages(
+    session: Session,
+    *,
+    usage_type_id: Optional[int] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> Page[UsageModel]:
+    stmt = select(UsageModel).order_by(UsageModel.id.asc())
 
-def get_usage(usage_id: int):
-    return get_usage_crud(usage_id)
+    if usage_type_id is not None:
+        stmt = stmt.where(UsageModel.usage_type_id == usage_type_id)
 
-def get_all_usages():
-    return get_all_usages_crud()
+    return _paginate(session, stmt, UsageModel, limit=limit, offset=offset)
+
+def add_usage(
+    session: Session,
+    *,
+    snippet_id: int,
+    usage_type_id: int,
+) -> UsageModel:
+    snippet = session.get(SnippetModel, snippet_id)
+    if snippet is None:
+        raise ValueError(f"Snippet {snippet_id} does not exist")
+
+    usage_type = session.get(UsageTypeModel, usage_type_id)
+    if usage_type is None:
+        raise ValueError(f"Usage type {usage_type_id} does not exist")
+
+    usage = UsageModel(
+        snippet_id=snippet_id,
+        usage_type_id=usage_type_id,
+    )
+    session.add(usage)
+    session.commit()
+    session.refresh(usage)
+    return usage
+
+
+def delete_usage(session: Session, usage_id: int) -> bool:
+    usage = session.get(UsageModel, usage_id)
+    if usage is None:
+        return False
+
+    session.delete(usage)
+    session.commit()
+    return True
+
+
+def play_usage(controller: PlaybackController, session: Session, usage_id: int) -> bool:
+    usage = session.get(UsageModel, usage_id)
+    if usage is None:
+        return False
+
+    return play_snippet(controller, session, usage.snippet_id)

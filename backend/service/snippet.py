@@ -1,65 +1,125 @@
-import os
-from backend.crud.snippet import add_snippet as add_snippet_crud, delete_snippet as delete_snippet_crud, edit_snippet as edit_snippet_crud, get_snippet as get_snippet_crud, get_all_snippets as get_all_snippets_crud
-from backend.crud.song import get_song
-from .playback import PlaybackService  # adjust import path as needed
+from __future__ import annotations
 
-# Snippet service layer with validation and playback
-def add_new_snippet(song_id: int, start: int = None, stop: int = None):
-    song = get_song(song_id)
-    if not song:
-        raise ValueError("Song does not exist.")
+from typing import Optional, Sequence
 
-    # Default start to 0 if None, stop to song length if None
-    start = start if start is not None else 0
-    stop = stop if stop is not None else song['length']
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-    validate_snippet_times(start, stop, song['length'])
+from backend.audio import PlaybackController
+from backend.db import (
+    SnippetModel,
+    TrackModel,
+)
+from backend.service import Page, _paginate
 
-    snippet_id = add_snippet_crud(song_id=song_id, start=start, stop=stop)
-    return snippet_id
+def get_snippets(
+    session: Session,
+    *,
+    track_id: Optional[int] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> Page[SnippetModel]:
+    stmt = select(SnippetModel).order_by(SnippetModel.id.asc())
 
-def edit_existing_snippet(snippet_id: int, start: int = None, stop: int = None):
-    snippet = get_snippet_crud(snippet_id)
-    if not snippet:
-        raise ValueError("Snippet does not exist.")
+    if track_id is not None:
+        stmt = stmt.where(SnippetModel.track_id == track_id)
 
-    song = snippet['song']
-    # Default start to 0 if None, stop to song length if None
-    start = start if start is not None else 0
-    stop = stop if stop is not None else song['length']
+    return _paginate(session, stmt, SnippetModel, limit=limit, offset=offset)
 
-    validate_snippet_times(start, stop, song['length'])
+def add_snippet(
+    session: Session,
+    *,
+    track_id: int,
+    start_second: int,
+    stop_second: int,
+) -> SnippetModel:
+    if start_second < 0:
+        raise ValueError("start_second must be >= 0")
+    if stop_second <= start_second:
+        raise ValueError("stop_second must be > start_second")
 
-    edit_snippet_crud(snippet_id, start, stop)
+    track = session.get(TrackModel, track_id)
+    if track is None:
+        raise ValueError(f"Track {track_id} does not exist")
 
-def delete_snippet(snippet_id: int):
-    delete_snippet_crud(snippet_id)
+    if stop_second > track.duration_seconds:
+        raise ValueError("stop_second exceeds track duration")
 
-def play_snippet(snippet_id: int):
-    snippet = get_snippet_crud(snippet_id)
-    if not snippet:
-        raise ValueError("Snippet does not exist.")
+    snippet = SnippetModel(
+        track_id=track_id,
+        start_second=start_second,
+        stop_second=stop_second,
+    )
+    session.add(snippet)
+    session.commit()
+    session.refresh(snippet)
+    return snippet
 
-    song = snippet['song']
-    file_path = os.path.join("../songs", f"{song['id']}.{song['file_ending']}")
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Audio file not found: {file_path}")
 
-    playback_service = PlaybackService.get_instance()
-    duration = snippet['stop'] - snippet['start']
-    playback_service.play_song(file_path, start=snippet['start'], duration=duration)
+def add_snippets(
+    session: Session,
+    *,
+    snippets: Sequence[tuple[int, int, int]],
+) -> list[SnippetModel]:
+    created: list[SnippetModel] = []
 
-def get_snippet(snippet_id: int):
-    return get_snippet_crud(snippet_id)
+    for track_id, start_second, stop_second in snippets:
+        if start_second < 0:
+            raise ValueError("start_second must be >= 0")
+        if stop_second <= start_second:
+            raise ValueError("stop_second must be > start_second")
 
-def get_all_snippets():
-    return get_all_snippets_crud()
+        track = session.get(TrackModel, track_id)
+        if track is None:
+            raise ValueError(f"Track {track_id} does not exist")
+        if stop_second > track.duration_seconds:
+            raise ValueError("stop_second exceeds track duration")
 
-# Utility function for snippet validation
-def validate_snippet_times(start: int, stop: int, song_length: int):
-    if start < 0 or stop < 0:
-        raise ValueError("Start and stop times must be non-negative.")
-    if start >= stop:
-        raise ValueError("Start time must be less than stop time.")
-    if stop > song_length:
-        raise ValueError("Stop time exceeds song length.")
+        created.append(
+            SnippetModel(
+                track_id=track_id,
+                start_second=start_second,
+                stop_second=stop_second,
+            )
+        )
+
+    session.add_all(created)
+    session.commit()
+
+    for snippet in created:
+        session.refresh(snippet)
+
+    return created
+
+
+def delete_snippet(session: Session, snippet_id: int) -> bool:
+    snippet = session.get(SnippetModel, snippet_id)
+    if snippet is None:
+        return False
+
+    session.delete(snippet)
+    session.commit()
+    return True
+
+
+def queue_snippet(controller: PlaybackController, session: Session, snippet_id: int) -> bool:
+    snippet = session.get(SnippetModel, snippet_id)
+    if snippet is None:
+        return False
+
+    controller.queue_track(
+        snippet.track_id,
+        snippet.start_second,
+        snippet.stop_second,
+        overlap=None,
+    )
+    return True
+
+
+def play_snippet(controller: PlaybackController, session: Session, snippet_id: int) -> bool:
+    queued = queue_snippet(controller, session, snippet_id)
+    if not queued:
+        return False
+
+    controller.play()
+    return True

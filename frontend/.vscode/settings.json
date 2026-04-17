@@ -1,8 +1,0 @@
-{
-	"typescript.preferences.importModuleSpecifier": "relative",
-	"editor.formatOnSave": true,
-	"editor.formatOnPaste": false,
-	"[typescriptreact]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
-	},
-}
