@@ -32,6 +32,7 @@ export const api = {
     if (input.comment) form.append('comment', input.comment);
     return request<AudioFile>('/audio-files', { method: 'POST', body: form });
   },
+  getAudioFile: (id: number) => request<AudioFile>(`/audio-files/${id}`),
   deleteAudioFile: (id: number) => request<void>(`/audio-files/${id}`, { method: 'DELETE' }),
 
   listSnippets: () => request<SnippetPage>('/snippets?limit=500&offset=0'),

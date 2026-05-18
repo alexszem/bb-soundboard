@@ -28,12 +28,16 @@ router = APIRouter(
 class SnippetCreateRequest(BaseModel):
     audio_file_id: int
     snippet_type_id: int
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
 
 
 class SnippetResponse(BaseModel):
     id: int
     audio_file_id: int
     snippet_type_id: int
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
 
 
 class SnippetListItemResponse(BaseModel):
@@ -42,6 +46,8 @@ class SnippetListItemResponse(BaseModel):
     snippet_type_id: int
     snippet_type_name: str
     category: Optional[str] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
     url: str
 
 
@@ -68,6 +74,8 @@ def create_snippet(
             session,
             audio_file_id=request.audio_file_id,
             snippet_type_id=request.snippet_type_id,
+            start_time=request.start_time,
+            end_time=request.end_time,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -79,6 +87,8 @@ def create_snippet(
         id=snippet.id,
         audio_file_id=snippet.audio_file_id,
         snippet_type_id=snippet.snippet_type_id,
+        start_time=snippet.start_time,
+        end_time=snippet.end_time,
     )
 
 
@@ -114,6 +124,8 @@ def list_snippets(
                 snippet_type_id=item.snippet_type_id,
                 snippet_type_name=item.snippet_type_name,
                 category=item.category,
+                start_time=item.start_time,
+                end_time=item.end_time,
                 url=static_audio_url_for_path(item.file_path),
             )
             for item in page.items

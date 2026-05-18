@@ -19,14 +19,31 @@ class SnippetListItem:
     snippet_type_id: int
     snippet_type_name: str
     category: Optional[str]
+    start_time: Optional[float]
+    end_time: Optional[float]
     file_path: Path
 
+def _validate_time_range(
+    *,
+    start_time: Optional[float],
+    end_time: Optional[float],
+) -> None:
+    if start_time is not None and start_time < 0:
+        raise ValueError("start_time must be greater than or equal to 0")
+
+    if end_time is not None and end_time < 0:
+        raise ValueError("end_time must be greater than or equal to 0")
+
+    if start_time is not None and end_time is not None and end_time <= start_time:
+        raise ValueError("end_time must be greater than start_time")
 
 def add_snippet(
     session: Session,
     *,
     audio_file_id: int,
     snippet_type_id: int,
+    start_time: Optional[float] = None,
+    end_time: Optional[float] = None,
 ) -> SnippetModel:
     if session.get(AudioFileModel, audio_file_id) is None:
         raise ValueError(f"Audio file {audio_file_id} does not exist")
@@ -34,9 +51,16 @@ def add_snippet(
     if session.get(SnippetTypeModel, snippet_type_id) is None:
         raise ValueError(f"Snippet type {snippet_type_id} does not exist")
 
+    _validate_time_range(
+        start_time=start_time,
+        end_time=end_time,
+    )
+
     snippet = SnippetModel(
         audio_file_id=audio_file_id,
         snippet_type_id=snippet_type_id,
+        start_time=start_time,
+        end_time=end_time,
     )
 
     session.add(snippet)
@@ -59,6 +83,8 @@ def get_snippets(
             SnippetModel.id,
             SnippetModel.audio_file_id,
             SnippetModel.snippet_type_id,
+            SnippetModel.start_time,
+            SnippetModel.end_time,
             SnippetTypeModel.name,
             SnippetTypeModel.category,
             AudioFileModel.file_extension,
@@ -86,6 +112,8 @@ def get_snippets(
                 snippet_type_id=row.snippet_type_id,
                 snippet_type_name=row.name,
                 category=row.category,
+                start_time=row.start_time,
+                end_time=row.end_time,
                 file_path=get_audio_file_path(
                     storage_dir=storage_dir,
                     audio_file_id=row.audio_file_id,

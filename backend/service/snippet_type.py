@@ -18,6 +18,8 @@ class RandomSnippetResult:
     snippet_type_name: str
     category: Optional[str]
     audio_file_id: int
+    start_time: Optional[float]
+    end_time: Optional[float]
     file_path: Path
 
 
@@ -57,6 +59,8 @@ def get_random_snippet_by_snippet_type(
     stmt = (
         select(
             SnippetModel.id.label("snippet_id"),
+            SnippetModel.start_time.label("start_time"),
+            SnippetModel.end_time.label("end_time"),
             SnippetTypeModel.id.label("snippet_type_id"),
             SnippetTypeModel.name.label("snippet_type_name"),
             SnippetTypeModel.category.label("category"),
@@ -80,6 +84,8 @@ def get_random_snippet_by_snippet_type(
         snippet_type_name=row.snippet_type_name,
         category=row.category,
         audio_file_id=row.audio_file_id,
+        start_time=row.start_time,
+        end_time=row.end_time,
         file_path=get_audio_file_path(
             storage_dir=storage_dir,
             audio_file_id=row.audio_file_id,

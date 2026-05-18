@@ -2,6 +2,7 @@ import { Button, Group, Modal, Select, Stack } from '@mantine/core';
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { AudioFile, SnippetType } from '../api/types';
+import { audioFilePickLabel, snippetTypeLabel } from '../utils/labels';
 
 export function AddSnippetDialog({ opened, onClose, audioFiles, snippetTypes, onSaved }: {
   opened: boolean;
@@ -36,7 +37,7 @@ export function AddSnippetDialog({ opened, onClose, audioFiles, snippetTypes, on
           placeholder="Pick file"
           value={audioFileId}
           onChange={setAudioFileId}
-          data={audioFiles.map((file) => ({ value: String(file.id), label: `${file.artist ?? 'Unknown'} - ${file.song ?? `File #${file.id}`}` }))}
+          data={audioFiles.map((file) => ({ value: String(file.id), label: audioFilePickLabel(file) }))}
           searchable
         />
         <Select
@@ -44,7 +45,7 @@ export function AddSnippetDialog({ opened, onClose, audioFiles, snippetTypes, on
           placeholder="Pick type"
           value={snippetTypeId}
           onChange={setSnippetTypeId}
-          data={snippetTypes.map((type) => ({ value: String(type.id), label: `${type.name}${type.category ? ` (${type.category})` : ''}` }))}
+          data={snippetTypes.map((type) => ({ value: String(type.id), label: snippetTypeLabel(type) }))}
           searchable
         />
         <Group grow>

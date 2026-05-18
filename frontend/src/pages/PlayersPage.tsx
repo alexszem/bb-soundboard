@@ -1,12 +1,14 @@
 import { Button, Card, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
-import type { Player, Snippet } from '../api/types';
+import type { AudioFile, Player, Snippet } from '../api/types';
 import { Fab } from '../components/Fab';
 import { PlayerDialog } from '../components/PlayerDialog';
+import { audioFileTitle } from '../utils/labels';
 
-export function PlayersPage({ players, snippets, reload }: {
+export function PlayersPage({ players, snippets, audioFiles, reload }: {
   players: Player[];
   snippets: Snippet[];
+  audioFiles: AudioFile[];
   reload: () => void;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -22,14 +24,21 @@ export function PlayersPage({ players, snippets, reload }: {
     setDialogOpen(true);
   }
 
+  function walkupTitle(player: Player) {
+    const snippet = snippets.find((item) => item.id === player.walkup_snippet_id);
+    const file = audioFiles.find((item) => item.id === snippet?.audio_file_id);
+    return file ? audioFileTitle(file) : 'No walkup song';
+  }
+
   return (
     <>
       <Text fw={800} size="lg" mb="xs">Players</Text>
       <Stack gap="xs">
         {players.map((player) => (
           <Card key={player.name} withBorder radius="md" p="sm">
-            <Button fullWidth justify="space-between" color="red" variant="subtle" onClick={() => openPlayer(player)}>
-              {player.name}
+            <Button fullWidth color="red" variant="subtle" className="player-card-button" onClick={() => openPlayer(player)}>
+              <span>{player.name}</span>
+              <small>{walkupTitle(player)}</small>
             </Button>
           </Card>
         ))}
@@ -41,6 +50,7 @@ export function PlayersPage({ players, snippets, reload }: {
         onClose={() => setDialogOpen(false)}
         player={selectedPlayer}
         snippets={snippets}
+        audioFiles={audioFiles}
         onSaved={reload}
       />
     </>

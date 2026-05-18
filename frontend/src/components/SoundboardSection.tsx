@@ -2,6 +2,7 @@ import { Button, Card, Group, Stack, Text } from '@mantine/core';
 import { api } from '../api/client';
 import type { SnippetType } from '../api/types';
 import type { PlaySound } from '../hooks/useAudioPlayer';
+import { nowPlayingTitle } from '../utils/labels';
 
 function isHidden(type: SnippetType) {
   return (type.category ?? '').trim().toLowerCase() === 'hidden';
@@ -22,7 +23,8 @@ export function SoundboardSection({ snippetTypes, play }: {
   async function playRandom(type: SnippetType) {
     await play(async () => {
       const snippet = await api.randomSnippet(type.id);
-      return { title: snippet.snippet_type_name, url: snippet.url };
+      const file = await api.getAudioFile(snippet.audio_file_id).catch(() => null);
+      return { title: nowPlayingTitle(snippet.snippet_type_name, file), url: snippet.url };
     });
   }
 

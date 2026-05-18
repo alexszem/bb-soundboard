@@ -1,13 +1,19 @@
-import { ActionIcon, Button, Card, Group, Select, Stack, Text } from '@mantine/core';
-import type { Player } from '../api/types';
+import { ActionIcon, Button, Card, Group, Select, Text } from '@mantine/core';
+import { useState } from 'react';
+import type { AudioFile, Player, Snippet } from '../api/types';
 import type { PlaySound } from '../hooks/useAudioPlayer';
+import { audioFileTitle, nowPlayingTitle } from '../utils/labels';
 
-export function PlayerQueue({ players, queue, setQueue, play }: {
+export function PlayerQueue({ players, snippets, audioFiles, queue, setQueue, play }: {
   players: Player[];
+  snippets: Snippet[];
+  audioFiles: AudioFile[];
   queue: string[];
   setQueue: (queue: string[]) => void;
   play: PlaySound;
 }) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
   function addPlayer(name: string | null) {
     if (!name) return;
     setQueue([...queue, name]);
@@ -17,10 +23,24 @@ export function PlayerQueue({ players, queue, setQueue, play }: {
     setQueue(queue.filter((_, i) => i !== index));
   }
 
+  function move(from: number, to: number) {
+    if (from === to) return;
+    const next = [...queue];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setQueue(next);
+  }
+
+  function walkupFile(player: Player) {
+    const snippet = snippets.find((item) => item.id === player.walkup_snippet_id);
+    return audioFiles.find((file) => file.id === snippet?.audio_file_id);
+  }
+
   async function playPlayer(name: string) {
     const player = players.find((p) => p.name === name);
     if (!player?.walkup_snippet_url) return;
-    await play({ title: `${player.name} walkup`, url: player.walkup_snippet_url });
+    const file = walkupFile(player);
+    await play({ title: nowPlayingTitle(`${player.name} walkup`, file), url: player.walkup_snippet_url });
   }
 
   return (
@@ -33,17 +53,38 @@ export function PlayerQueue({ players, queue, setQueue, play }: {
         searchable
         clearable
       />
-      <Stack mt="sm" gap="xs">
+      <div className="player-grid">
         {queue.length === 0 && <Text c="dimmed">No players added yet.</Text>}
-        {queue.map((name, index) => (
-          <Card key={`${name}-${index}`} withBorder radius="md" p="sm">
-            <Group justify="space-between" wrap="nowrap">
-              <Button variant="subtle" color="red" onClick={() => playPlayer(name)}>{index + 1}. {name}</Button>
-              <ActionIcon color="gray" variant="light" onClick={() => removeAt(index)}>×</ActionIcon>
-            </Group>
-          </Card>
-        ))}
-      </Stack>
+        {queue.map((name, index) => {
+          const player = players.find((p) => p.name === name);
+          const file = player ? walkupFile(player) : null;
+          return (
+            <Card
+              key={`${name}-${index}`}
+              withBorder
+              radius="md"
+              p="xs"
+              draggable
+              className={dragIndex === index ? 'dragging-card' : undefined}
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => {
+                if (dragIndex !== null) move(dragIndex, index);
+                setDragIndex(null);
+              }}
+              onDragEnd={() => setDragIndex(null)}
+            >
+              <Group justify="space-between" wrap="nowrap" gap="xs">
+                <Button variant="subtle" color="red" className="player-button" onClick={() => playPlayer(name)}>
+                  <span>{index + 1}. {name}</span>
+                  {file && <small>{audioFileTitle(file)}</small>}
+                </Button>
+                <ActionIcon color="gray" variant="light" onClick={() => removeAt(index)}>×</ActionIcon>
+              </Group>
+            </Card>
+          );
+        })}
+      </div>
     </section>
   );
 }

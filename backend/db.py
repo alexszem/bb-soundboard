@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -48,7 +48,9 @@ class SnippetModel(Base):
         UniqueConstraint(
             "audio_file_id",
             "snippet_type_id",
-            name="uq_snippet_file_type",
+            "start_time",
+            "end_time",
+            name="uq_snippet_file_type_time",
         ),
     )
 
@@ -62,6 +64,9 @@ class SnippetModel(Base):
         ForeignKey("snippet_types.id"),
         nullable=False,
     )
+
+    start_time: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    end_time: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     audio_file: Mapped["AudioFileModel"] = relationship(
         back_populates="snippets",

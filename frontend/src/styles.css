@@ -31,7 +31,7 @@ body {
   transform: translateX(-50%);
   width: min(520px, calc(100vw - 24px));
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   background: #fff;
   border: 1px solid #e9ecef;
@@ -69,4 +69,41 @@ body {
   .fab {
     right: calc((100vw - 540px) / 2 + 12px);
   }
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.player-button,
+.player-card-button {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 8px;
+}
+
+.player-button .mantine-Button-label,
+.player-card-button .mantine-Button-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+}
+
+.player-button small,
+.player-card-button small {
+  color: #495057;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.dragging-card {
+  opacity: 0.55;
 }

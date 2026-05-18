@@ -1,9 +1,10 @@
 import { Button, Paper } from '@mantine/core';
 
-export type Page = 'main' | 'players' | 'files';
+export type Page = 'main' | 'snippets' | 'players' | 'files';
 
 const items: { page: Page; label: string }[] = [
   { page: 'main', label: 'Main' },
+  { page: 'snippets', label: 'Snippets' },
   { page: 'players', label: 'Players' },
   { page: 'files', label: 'Files' },
 ];

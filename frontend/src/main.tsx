@@ -12,6 +12,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { FilesPage } from './pages/FilesPage';
 import { MainPage } from './pages/MainPage';
 import { PlayersPage } from './pages/PlayersPage';
+import { SnippetsPage } from './pages/SnippetsPage';
 
 const theme = createTheme({
   primaryColor: 'red',
@@ -56,12 +57,13 @@ function App() {
             queue={queue}
             setQueue={setQueue}
             snippetTypes={snippetTypes}
+            snippets={snippets}
             audioFiles={audioFiles}
             play={play}
-            reload={reload}
           />
         )}
-        {page === 'players' && <PlayersPage players={players} snippets={snippets} reload={reload} />}
+        {page === 'snippets' && <SnippetsPage audioFiles={audioFiles} snippetTypes={snippetTypes} snippets={snippets} reload={reload} />}
+        {page === 'players' && <PlayersPage players={players} snippets={snippets} audioFiles={audioFiles} reload={reload} />}
         {page === 'files' && <FilesPage audioFiles={audioFiles} reload={reload} />}
       </main>
       <NowPlayingBar playing={playing} onStop={stop} />

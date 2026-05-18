@@ -42,6 +42,8 @@ class RandomSnippetResponse(BaseModel):
     snippet_type_name: str
     category: Optional[str] = None
     audio_file_id: int
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
     url: str
 
 @router.post(
@@ -118,6 +120,8 @@ def get_random_snippet(
         snippet_type_name=result.snippet_type_name,
         category=result.category,
         audio_file_id=result.audio_file_id,
+        start_time=result.start_time,
+        end_time=result.end_time,
         url=static_audio_url_for_path(result.file_path),
     )
 

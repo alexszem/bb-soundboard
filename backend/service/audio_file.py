@@ -48,6 +48,12 @@ def get_audio_file_path_for_id(
         file_extension=audio_file.file_extension or "",
     )
 
+def get_audio_file_by_id(
+    session: Session,
+    *,
+    audio_file_id: int,
+) -> Optional[AudioFileModel]:
+    return session.get(AudioFileModel, audio_file_id)
 
 def add_audio_file(
     session: Session,

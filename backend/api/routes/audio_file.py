@@ -17,6 +17,7 @@ from backend.api.deps import (
 from backend.service.audio_file import (
     add_audio_file,
     delete_audio_file,
+    get_audio_file_by_id,
     get_audio_files,
 )
 
@@ -144,6 +145,33 @@ def list_audio_files(
         total=page.total,
         limit=page.limit,
         offset=page.offset,
+    )
+
+@router.get(
+    "/{audio_file_id}",
+    response_model=AudioFileResponse,
+    summary="Get audio file by ID",
+    description="Returns one audio file by ID, including its public static URL.",
+)
+def get_audio_file(
+    audio_file_id: int,
+    session: Session = Depends(get_session),
+    storage_dir: Path = Depends(get_audio_storage_dir),
+) -> AudioFileResponse:
+    audio_file = get_audio_file_by_id(
+        session,
+        audio_file_id=audio_file_id,
+    )
+
+    if audio_file is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audio file {audio_file_id} does not exist",
+        )
+
+    return _response_from_audio_file(
+        audio_file,
+        storage_dir=storage_dir,
     )
 
 @router.delete(
