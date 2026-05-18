@@ -1,125 +1,123 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.audio import PlaybackController
-from backend.db import (
-    SnippetModel,
-    TrackModel,
-)
-from backend.service import Page, _paginate
+from backend.db import AudioFileModel, PlayerModel, SnippetModel, SnippetTypeModel
+from backend.service.audio_file import get_audio_file_path
+from backend.service.pagination import Page, paginate_rows
 
-def get_snippets(
-    session: Session,
-    *,
-    track_id: Optional[int] = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> Page[SnippetModel]:
-    stmt = select(SnippetModel).order_by(SnippetModel.id.asc())
 
-    if track_id is not None:
-        stmt = stmt.where(SnippetModel.track_id == track_id)
+@dataclass(frozen=True)
+class SnippetListItem:
+    id: int
+    audio_file_id: int
+    snippet_type_id: int
+    snippet_type_name: str
+    category: Optional[str]
+    file_path: Path
 
-    return _paginate(session, stmt, SnippetModel, limit=limit, offset=offset)
 
 def add_snippet(
     session: Session,
     *,
-    track_id: int,
-    start_second: int,
-    stop_second: int,
+    audio_file_id: int,
+    snippet_type_id: int,
 ) -> SnippetModel:
-    if start_second < 0:
-        raise ValueError("start_second must be >= 0")
-    if stop_second <= start_second:
-        raise ValueError("stop_second must be > start_second")
+    if session.get(AudioFileModel, audio_file_id) is None:
+        raise ValueError(f"Audio file {audio_file_id} does not exist")
 
-    track = session.get(TrackModel, track_id)
-    if track is None:
-        raise ValueError(f"Track {track_id} does not exist")
-
-    if stop_second > track.duration_seconds:
-        raise ValueError("stop_second exceeds track duration")
+    if session.get(SnippetTypeModel, snippet_type_id) is None:
+        raise ValueError(f"Snippet type {snippet_type_id} does not exist")
 
     snippet = SnippetModel(
-        track_id=track_id,
-        start_second=start_second,
-        stop_second=stop_second,
+        audio_file_id=audio_file_id,
+        snippet_type_id=snippet_type_id,
     )
+
     session.add(snippet)
     session.commit()
     session.refresh(snippet)
+
     return snippet
 
 
-def add_snippets(
+def get_snippets(
     session: Session,
     *,
-    snippets: Sequence[tuple[int, int, int]],
-) -> list[SnippetModel]:
-    created: list[SnippetModel] = []
-
-    for track_id, start_second, stop_second in snippets:
-        if start_second < 0:
-            raise ValueError("start_second must be >= 0")
-        if stop_second <= start_second:
-            raise ValueError("stop_second must be > start_second")
-
-        track = session.get(TrackModel, track_id)
-        if track is None:
-            raise ValueError(f"Track {track_id} does not exist")
-        if stop_second > track.duration_seconds:
-            raise ValueError("stop_second exceeds track duration")
-
-        created.append(
-            SnippetModel(
-                track_id=track_id,
-                start_second=start_second,
-                stop_second=stop_second,
-            )
+    storage_dir: Path,
+    snippet_type_id: Optional[int] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> Page[SnippetListItem]:
+    stmt = (
+        select(
+            SnippetModel.id,
+            SnippetModel.audio_file_id,
+            SnippetModel.snippet_type_id,
+            SnippetTypeModel.name,
+            SnippetTypeModel.category,
+            AudioFileModel.file_extension,
         )
+        .join(AudioFileModel, AudioFileModel.id == SnippetModel.audio_file_id)
+        .join(SnippetTypeModel, SnippetTypeModel.id == SnippetModel.snippet_type_id)
+        .order_by(SnippetModel.id.desc())
+    )
 
-    session.add_all(created)
-    session.commit()
+    if snippet_type_id is not None:
+        stmt = stmt.where(SnippetModel.snippet_type_id == snippet_type_id)
 
-    for snippet in created:
-        session.refresh(snippet)
+    page = paginate_rows(
+        session,
+        stmt,
+        limit=limit,
+        offset=offset,
+    )
 
-    return created
+    return Page(
+        items=[
+            SnippetListItem(
+                id=row.id,
+                audio_file_id=row.audio_file_id,
+                snippet_type_id=row.snippet_type_id,
+                snippet_type_name=row.name,
+                category=row.category,
+                file_path=get_audio_file_path(
+                    storage_dir=storage_dir,
+                    audio_file_id=row.audio_file_id,
+                    file_extension=row.file_extension or "",
+                ),
+            )
+            for row in page.items
+        ],
+        total=page.total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
-def delete_snippet(session: Session, snippet_id: int) -> bool:
+def delete_snippet(
+    session: Session,
+    *,
+    snippet_id: int,
+) -> bool:
     snippet = session.get(SnippetModel, snippet_id)
     if snippet is None:
         return False
+
+    players_stmt = select(PlayerModel).where(
+        PlayerModel.walkup_snippet_id == snippet.id,
+    )
+    players = list(session.scalars(players_stmt).all())
+
+    for player in players:
+        player.walkup_snippet_id = None
 
     session.delete(snippet)
     session.commit()
-    return True
 
-
-def queue_snippet(controller: PlaybackController, session: Session, snippet_id: int) -> bool:
-    snippet = session.get(SnippetModel, snippet_id)
-    if snippet is None:
-        return False
-
-    controller.queue_track(
-        snippet.track_id,
-        snippet.start_second,
-        snippet.stop_second,
-        overlap=None,
-    )
-    return True
-
-
-def play_snippet(controller: PlaybackController, session: Session, snippet_id: int) -> bool:
-    queued = queue_snippet(controller, session, snippet_id)
-    if not queued:
-        return False
-
-    controller.play()
     return True

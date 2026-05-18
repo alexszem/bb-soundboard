@@ -1,20 +1,22 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.audio import PlaybackController
-from backend.db import (
-    PlayerModel,
-    SnippetModel,
-)
-from backend.service.snippet import play_snippet
+from backend.db import AudioFileModel, PlayerModel, SnippetModel
+from backend.service.audio_file import get_audio_file_path
 
-def get_players(session: Session) -> list[PlayerModel]:
-    stmt = select(PlayerModel).order_by(PlayerModel.name.asc())
-    return list(session.scalars(stmt).all())
+
+@dataclass(frozen=True)
+class PlayerListItem:
+    name: str
+    walkup_snippet_id: Optional[int]
+    walkup_snippet_path: Optional[Path]
+
 
 def add_player(
     session: Session,
@@ -29,13 +31,52 @@ def add_player(
         name=name,
         walkup_snippet_id=walkup_snippet_id,
     )
+
     session.add(player)
     session.commit()
     session.refresh(player)
+
     return player
 
 
-def update_player(
+def get_players(
+    session: Session,
+    *,
+    storage_dir: Path,
+) -> list[PlayerListItem]:
+    stmt = (
+        select(
+            PlayerModel.name.label("name"),
+            PlayerModel.walkup_snippet_id.label("walkup_snippet_id"),
+            AudioFileModel.id.label("audio_file_id"),
+            AudioFileModel.file_extension.label("file_extension"),
+        )
+        .outerjoin(SnippetModel, SnippetModel.id == PlayerModel.walkup_snippet_id)
+        .outerjoin(AudioFileModel, AudioFileModel.id == SnippetModel.audio_file_id)
+        .order_by(PlayerModel.name.asc())
+    )
+
+    rows = session.execute(stmt).all()
+
+    return [
+        PlayerListItem(
+            name=row.name,
+            walkup_snippet_id=row.walkup_snippet_id,
+            walkup_snippet_path=(
+                get_audio_file_path(
+                    storage_dir=storage_dir,
+                    audio_file_id=row.audio_file_id,
+                    file_extension=row.file_extension or "",
+                )
+                if row.audio_file_id is not None
+                else None
+            ),
+        )
+        for row in rows
+    ]
+
+
+def update_player_walkup_snippet(
     session: Session,
     *,
     name: str,
@@ -49,28 +90,23 @@ def update_player(
         raise ValueError(f"Snippet {walkup_snippet_id} does not exist")
 
     player.walkup_snippet_id = walkup_snippet_id
+
     session.commit()
     session.refresh(player)
+
     return player
 
 
-def delete_player(session: Session, name: str) -> bool:
+def delete_player(
+    session: Session,
+    *,
+    name: str,
+) -> bool:
     player = session.get(PlayerModel, name)
     if player is None:
         return False
 
     session.delete(player)
     session.commit()
+
     return True
-
-
-def play_player_walkup(
-    controller: PlaybackController,
-    session: Session,
-    player_name: str,
-) -> bool:
-    player = session.get(PlayerModel, player_name)
-    if player is None or player.walkup_snippet_id is None:
-        return False
-
-    return play_snippet(controller, session, player.walkup_snippet_id)
