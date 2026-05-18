@@ -8,18 +8,9 @@ export type AudioFile = {
   url: string;
 };
 
-export type AudioFilePage = {
-  items: AudioFile[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+export type AudioFilePage = { items: AudioFile[]; total: number; limit: number; offset: number };
 
-export type SnippetType = {
-  id: number;
-  name: string;
-  category?: string | null;
-};
+export type SnippetType = { id: number; name: string; category?: string | null };
 
 export type Snippet = {
   id: number;
@@ -27,14 +18,19 @@ export type Snippet = {
   snippet_type_id: number;
   snippet_type_name: string;
   category?: string | null;
+  start_time?: number | null;
+  end_time?: number | null;
   url: string;
 };
 
-export type SnippetPage = {
-  items: Snippet[];
-  total: number;
-  limit: number;
-  offset: number;
+export type SnippetPage = { items: Snippet[]; total: number; limit: number; offset: number };
+
+export type SnippetCreateResponse = {
+  id: number;
+  audio_file_id: number;
+  snippet_type_id: number;
+  start_time?: number | null;
+  end_time?: number | null;
 };
 
 export type RandomSnippet = {
@@ -43,6 +39,8 @@ export type RandomSnippet = {
   snippet_type_name: string;
   category?: string | null;
   audio_file_id: number;
+  start_time?: number | null;
+  end_time?: number | null;
   url: string;
 };
 

@@ -1,4 +1,4 @@
-import type { AudioFile, AudioFilePage, Player, RandomSnippet, Snippet, SnippetPage, SnippetType } from './types';
+import type { AudioFile, AudioFilePage, Player, RandomSnippet, Snippet, SnippetCreateResponse, SnippetPage, SnippetType } from './types';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
@@ -17,6 +17,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function optionalNumber(value?: number | null) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 export function resolveAudioUrl(url: string) {
   if (/^https?:\/\//i.test(url)) return url;
   return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
@@ -24,6 +28,7 @@ export function resolveAudioUrl(url: string) {
 
 export const api = {
   listAudioFiles: () => request<AudioFilePage>('/audio-files?limit=500&offset=0'),
+  getAudioFile: (id: number) => request<AudioFile>(`/audio-files/${id}`),
   createAudioFile: (input: { file: File; artist?: string; song?: string; comment?: string }) => {
     const form = new FormData();
     form.append('file', input.file);
@@ -32,12 +37,23 @@ export const api = {
     if (input.comment) form.append('comment', input.comment);
     return request<AudioFile>('/audio-files', { method: 'POST', body: form });
   },
-  getAudioFile: (id: number) => request<AudioFile>(`/audio-files/${id}`),
   deleteAudioFile: (id: number) => request<void>(`/audio-files/${id}`, { method: 'DELETE' }),
 
-  listSnippets: () => request<SnippetPage>('/snippets?limit=500&offset=0'),
-  createSnippet: (audio_file_id: number, snippet_type_id: number) =>
-    request<Snippet>('/snippets', { method: 'POST', body: JSON.stringify({ audio_file_id, snippet_type_id }) }),
+  listSnippets: (snippetTypeId?: number) => {
+    const params = new URLSearchParams({ limit: '500', offset: '0' });
+    if (snippetTypeId) params.set('snippet_type_id', String(snippetTypeId));
+    return request<SnippetPage>(`/snippets?${params}`);
+  },
+  createSnippet: (input: { audio_file_id: number; snippet_type_id: number; start_time?: number | null; end_time?: number | null }) =>
+    request<SnippetCreateResponse>('/snippets', {
+      method: 'POST',
+      body: JSON.stringify({
+        audio_file_id: input.audio_file_id,
+        snippet_type_id: input.snippet_type_id,
+        start_time: optionalNumber(input.start_time),
+        end_time: optionalNumber(input.end_time),
+      }),
+    }),
   deleteSnippet: (id: number) => request<void>(`/snippets/${id}`, { method: 'DELETE' }),
 
   listSnippetTypes: () => request<SnippetType[]>('/snippet-types'),
