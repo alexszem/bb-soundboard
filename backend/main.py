@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.deps import create_database_tables, get_audio_storage_dir
 from backend.api.routes.audio_file import router as audio_file_router
@@ -25,6 +26,14 @@ app = FastAPI(
     description="Backend API for managing audio files, snippets, snippet types, and players.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
