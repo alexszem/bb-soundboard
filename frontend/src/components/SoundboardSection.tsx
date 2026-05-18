@@ -1,7 +1,7 @@
 import { Button, Card, Group, Stack, Text } from '@mantine/core';
 import { api } from '../api/client';
 import type { SnippetType } from '../api/types';
-import type { PlayingInfo } from '../hooks/useAudioPlayer';
+import type { PlaySound } from '../hooks/useAudioPlayer';
 
 function isHidden(type: SnippetType) {
   return (type.category ?? '').trim().toLowerCase() === 'hidden';
@@ -9,7 +9,7 @@ function isHidden(type: SnippetType) {
 
 export function SoundboardSection({ snippetTypes, play }: {
   snippetTypes: SnippetType[];
-  play: (info: PlayingInfo) => Promise<void>;
+  play: PlaySound;
 }) {
   const visibleTypes = snippetTypes.filter((type) => !isHidden(type));
   const byCategory = visibleTypes.reduce<Record<string, SnippetType[]>>((acc, type) => {
@@ -20,8 +20,10 @@ export function SoundboardSection({ snippetTypes, play }: {
   }, {});
 
   async function playRandom(type: SnippetType) {
-    const snippet = await api.randomSnippet(type.id);
-    await play({ title: snippet.snippet_type_name, url: snippet.url });
+    await play(async () => {
+      const snippet = await api.randomSnippet(type.id);
+      return { title: snippet.snippet_type_name, url: snippet.url };
+    });
   }
 
   return (

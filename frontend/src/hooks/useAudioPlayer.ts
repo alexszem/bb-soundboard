@@ -7,48 +7,98 @@ export type PlayingInfo = {
   loopAfterEnd?: () => Promise<void> | void;
 };
 
+export type PlayInput = PlayingInfo | (() => PlayingInfo | Promise<PlayingInfo>);
+export type PlaySound = (input: PlayInput) => Promise<void>;
+
+function cleanupAudio(audio: HTMLAudioElement) {
+  audio.onended = null;
+  audio.onerror = null;
+  audio.pause();
+  audio.currentTime = 0;
+  audio.removeAttribute('src');
+  audio.load();
+}
+
 export function useAudioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playIdRef = useRef(0);
   const stopRequestedRef = useRef(false);
   const [playing, setPlaying] = useState<PlayingInfo | null>(null);
 
   const stop = useCallback(() => {
+    playIdRef.current += 1;
     stopRequestedRef.current = true;
+
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.src = '';
+      cleanupAudio(audioRef.current);
       audioRef.current = null;
     }
+
     setPlaying(null);
   }, []);
 
-  const play = useCallback(
-    async (info: PlayingInfo) => {
-      stop();
-      stopRequestedRef.current = false;
+  const play = useCallback(async (input: PlayInput) => {
+    const playId = playIdRef.current + 1;
+    playIdRef.current = playId;
+    stopRequestedRef.current = false;
 
-      const audio = new Audio(resolveAudioUrl(info.url));
-      audioRef.current = audio;
-      setPlaying(info);
+    if (audioRef.current) {
+      cleanupAudio(audioRef.current);
+      audioRef.current = null;
+    }
 
-      audio.onended = async () => {
-        audioRef.current = null;
+    const inputIsLoader = typeof input === 'function';
+    if (inputIsLoader) {
+      setPlaying({ title: 'Loading sound…', url: '' });
+    }
+
+    let info: PlayingInfo;
+    try {
+      info = inputIsLoader ? await input() : input;
+    } catch (error) {
+      if (playIdRef.current === playId) {
         setPlaying(null);
-        if (!stopRequestedRef.current && info.loopAfterEnd) {
-          await info.loopAfterEnd();
-        }
-      };
+      }
+      console.error(error);
+      return;
+    }
 
-      audio.onerror = () => {
-        audioRef.current = null;
-        setPlaying(null);
-      };
+    if (playIdRef.current !== playId || stopRequestedRef.current) {
+      return;
+    }
 
+    const audio = new Audio(resolveAudioUrl(info.url));
+    audioRef.current = audio;
+    setPlaying(info);
+
+    audio.onended = async () => {
+      if (playIdRef.current !== playId || audioRef.current !== audio) return;
+
+      audioRef.current = null;
+      setPlaying(null);
+
+      if (!stopRequestedRef.current && info.loopAfterEnd) {
+        await info.loopAfterEnd();
+      }
+    };
+
+    audio.onerror = () => {
+      if (playIdRef.current !== playId || audioRef.current !== audio) return;
+
+      audioRef.current = null;
+      setPlaying(null);
+    };
+
+    try {
       await audio.play();
-    },
-    [stop]
-  );
+    } catch (error) {
+      if (playIdRef.current !== playId || audioRef.current !== audio) return;
+
+      audioRef.current = null;
+      setPlaying(null);
+      console.error(error);
+    }
+  }, []);
 
   useEffect(() => stop, [stop]);
 

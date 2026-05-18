@@ -6,7 +6,7 @@ import { Fab } from '../components/Fab';
 import { IntermissionButton } from '../components/IntermissionButton';
 import { PlayerQueue } from '../components/PlayerQueue';
 import { SoundboardSection } from '../components/SoundboardSection';
-import type { PlayingInfo } from '../hooks/useAudioPlayer';
+import type { PlaySound } from '../hooks/useAudioPlayer';
 
 export function MainPage({ players, queue, setQueue, snippetTypes, audioFiles, play, reload }: {
   players: Player[];
@@ -14,7 +14,7 @@ export function MainPage({ players, queue, setQueue, snippetTypes, audioFiles, p
   setQueue: (queue: string[]) => void;
   snippetTypes: SnippetType[];
   audioFiles: AudioFile[];
-  play: (info: PlayingInfo) => Promise<void>;
+  play: PlaySound;
   reload: () => void;
 }) {
   const [opened, { open, close }] = useDisclosure(false);

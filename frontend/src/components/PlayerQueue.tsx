@@ -1,12 +1,12 @@
 import { ActionIcon, Button, Card, Group, Select, Stack, Text } from '@mantine/core';
 import type { Player } from '../api/types';
-import type { PlayingInfo } from '../hooks/useAudioPlayer';
+import type { PlaySound } from '../hooks/useAudioPlayer';
 
 export function PlayerQueue({ players, queue, setQueue, play }: {
   players: Player[];
   queue: string[];
   setQueue: (queue: string[]) => void;
-  play: (info: PlayingInfo) => Promise<void>;
+  play: PlaySound;
 }) {
   function addPlayer(name: string | null) {
     if (!name) return;
